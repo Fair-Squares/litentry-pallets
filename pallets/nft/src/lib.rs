@@ -39,6 +39,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::NFT;
+use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_io::hashing::keccak_256;
@@ -66,7 +67,7 @@ pub type HashByte32 = [u8; 32];
 pub const CREATION_FEE: u32 = 100;
 
 #[repr(u8)]
-#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum ClassProperty {
 	/// Token can be transferred
 	Transferable = 0b00000001,
@@ -91,7 +92,18 @@ impl Decode for Properties {
 	}
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+impl TypeInfo for Properties {
+	type Identity = Self;
+
+	fn type_info() -> Type {
+		Type::builder()
+			.path(Path::new("Properties", module_path!()))
+			.type_params(vec![TypeParameter::new("T", Some(meta_type::<ClassProperty>()))])
+			.composite(Fields::unnamed().field(|f| f.ty::<u8>().type_name("ClassProperty")))
+	}
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassData<BN, ID> {
 	/// Property of token
@@ -104,7 +116,7 @@ pub struct ClassData<BN, ID> {
 	pub class_type: ClassType<ID>,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TokenData {
 	/// if token is used to generate an advanced nft
@@ -113,7 +125,7 @@ pub struct TokenData {
 	pub rarity: u8,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ClassType<ID> {
 	/// A class that owner can mint instances no more than u32
@@ -262,7 +274,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::CreationFeeNotPaid)?;
 
 			match class_type {
-				ClassType::Merge(id1, id2, burn) => {
+				ClassType::Merge(id1, id2, burn) =>
 					if !burn {
 						ensure!(
 							<orml_nft::Pallet<T>>::classes(id1).is_some(),
@@ -288,12 +300,11 @@ pub mod pallet {
 							data2.properties.0.contains(ClassProperty::Burnable),
 							Error::<T>::NonBurnable
 						);
-					}
-				}
+					},
 				ClassType::Claim(_) => {
 					ClaimedList::<T>::insert(next_id, Vec::<u16>::new());
-				}
-				_ => {}
+				},
+				_ => {},
 			}
 
 			let data = ClassData { properties, start_block, end_block, class_type };
@@ -335,7 +346,7 @@ pub mod pallet {
 					if TokenIdOf::<T>::from(quantity) > (TokenIdOf::<T>::from(max_num) - issued) {
 						Err(Error::<T>::QuantityOverflow)?
 					}
-				}
+				},
 				_ => Err(Error::<T>::WrongClassType)?,
 			}
 
@@ -400,7 +411,7 @@ pub mod pallet {
 					ClaimedList::<T>::mutate(class_id, |claimed_vec| {
 						claimed_vec.push(index);
 					});
-				}
+				},
 
 				_ => Err(Error::<T>::WrongClassType)?,
 			}
@@ -444,8 +455,8 @@ pub mod pallet {
 
 			if let ClassType::Merge(id1, id2, b) = merged_class_info.data.class_type {
 				ensure!(
-					((id1 == token1.0) && (id2 == token2.0))
-						|| ((id1 == token2.0) && (id2 == token1.0)),
+					((id1 == token1.0) && (id2 == token2.0)) ||
+						((id1 == token2.0) && (id2 == token1.0)),
 					Error::<T>::WrongMergeBase,
 				);
 				burn = b;
@@ -572,12 +583,12 @@ impl<T: Config> Pallet<T> {
 		let current_block_number = <frame_system::Pallet<T>>::block_number();
 		if let Some(start_block) = token_info.start_block {
 			if start_block > current_block_number {
-				return false;
+				return false
 			}
 		}
 		if let Some(end_block) = token_info.end_block {
 			if end_block < current_block_number {
-				return false;
+				return false
 			}
 		}
 		true
@@ -590,7 +601,7 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 	type Balance = u128;
 
 	fn balance(who: &T::AccountId) -> Self::Balance {
-		orml_nft::TokensByOwner::<T>::iter_prefix(who).count() as u128
+		orml_nft::TokensByOwner::<T>::iter_prefix((who,)).count() as u128
 	}
 
 	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {

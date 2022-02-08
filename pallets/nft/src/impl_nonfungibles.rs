@@ -33,7 +33,7 @@ impl<T: Config> Inspect<<T as frame_system::Config>::AccountId> for Pallet<T> {
 			// We make the empty key map to the instance metadata value.
 			orml_nft::Pallet::<T>::tokens(class, instance).map(|a| a.metadata.into())
 		} else {
-			return None;
+			return None
 		}
 	}
 
@@ -47,14 +47,14 @@ impl<T: Config> Inspect<<T as frame_system::Config>::AccountId> for Pallet<T> {
 			// We make the empty key map to the instance metadata value.
 			orml_nft::Pallet::<T>::classes(class).map(|a| a.metadata.into())
 		} else {
-			return None;
+			return None
 		}
 	}
 
 	/// Returns `true` if the asset `instance` of `class` may be transferred.
 	///
 	/// Default implementation is that all assets are transferable.
-	fn can_transfer(class: &Self::ClassId, instance: &Self::InstanceId) -> bool {
+	fn can_transfer(class: &Self::ClassId, _instance: &Self::InstanceId) -> bool {
 		match orml_nft::Pallet::<T>::classes(class) {
 			Some(class) => class.data.properties.0.contains(ClassProperty::Transferable),
 			_ => false,
