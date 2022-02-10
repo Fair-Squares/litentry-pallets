@@ -38,14 +38,13 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::NFT;
+use orml_traits::InspectExtended;
 use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::StaticLookup, DispatchResult, RuntimeDebug};
 use sp_std::vec::Vec;
-
 #[cfg(test)]
 mod mock;
 
@@ -595,14 +594,17 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> NFT<T::AccountId> for Pallet<T> {
-	type ClassId = ClassIdOf<T>;
-	type TokenId = TokenIdOf<T>;
+impl<T: Config> InspectExtended<T::AccountId> for Pallet<T> {
 	type Balance = u128;
 
 	fn balance(who: &T::AccountId) -> Self::Balance {
 		orml_nft::TokensByOwner::<T>::iter_prefix((who,)).count() as u128
 	}
+}
+
+impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
+	type TokenId = TokenIdOf<T>;
+	type ClassId = ClassIdOf<T>;
 
 	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
 		orml_nft::Pallet::<T>::tokens(token.0, token.1).map(|t| t.owner)
@@ -616,3 +618,6 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 		Self::do_transfer(from, to, token)
 	}
 }
+
+
+
